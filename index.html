@@ -434,41 +434,42 @@
 
   /* ---------- the week header: inputs live here ---------- */
   var hourInputs = [];
-  (function buildHead(){
-    for(var i = 0; i < 7; i++){
-      var col = document.createElement("div");
-      col.className = "col" + (i > 4 ? " rest" : "");
 
-      var name = document.createElement("span");
-      name.className = "name";
-      name.innerHTML = '<span class="long">' + DAY_ABBR[i] + '</span>' +
-                       '<span class="short">' + DAY_MIN[i] + '</span>';
-      col.appendChild(name);
+  // One call per weekday, so `col` and `inp` belong to this column alone.
+  // Declaring them in a shared loop makes every handler talk to the last input.
+  function buildHeadCol(idx){
+    var col = document.createElement("div");
+    col.className = "col" + (idx > 4 ? " rest" : "");
 
-      var inp = document.createElement("input");
-      inp.type = "number";
-      inp.min = "0"; inp.max = "24"; inp.step = "0.25";
-      inp.inputMode = "decimal";
-      inp.setAttribute("aria-label","Hours worked on each " + DAY_LONG[i]);
-      (function(idx){
-        inp.addEventListener("input", function(){
-          state.hours[idx] = clampHours(inp.value);
-          save(); render();
-        });
-        inp.addEventListener("blur", function(){
-          inp.value = fmtHours(state.hours[idx]);
-        });
-      })(i);
-      col.appendChild(inp);
-      hourInputs.push(inp);
+    var name = document.createElement("span");
+    name.className = "name";
+    name.innerHTML = '<span class="long">' + DAY_ABBR[idx] + '</span>' +
+                     '<span class="short">' + DAY_MIN[idx] + '</span>';
+    col.appendChild(name);
 
-      var tally = document.createElement("span");
-      tally.className = "tally";
-      col.appendChild(tally);
+    var inp = document.createElement("input");
+    inp.type = "number";
+    inp.min = "0"; inp.max = "24"; inp.step = "0.25";
+    inp.inputMode = "decimal";
+    inp.setAttribute("aria-label","Hours worked on each " + DAY_LONG[idx]);
+    inp.addEventListener("input", function(e){
+      state.hours[idx] = clampHours(e.target.value);
+      save(); render();
+    });
+    inp.addEventListener("blur", function(e){
+      e.target.value = fmtHours(state.hours[idx]);
+    });
+    col.appendChild(inp);
+    hourInputs[idx] = inp;
 
-      el.weekHead.appendChild(col);
-    }
-  })();
+    var tally = document.createElement("span");
+    tally.className = "tally";
+    col.appendChild(tally);
+
+    el.weekHead.appendChild(col);
+  }
+
+  for(var w0 = 0; w0 < 7; w0++) buildHeadCol(w0);
 
   /* ---------- month math ---------- */
   function compute(){
