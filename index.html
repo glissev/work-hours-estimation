@@ -143,7 +143,7 @@
   /* calendar ------------------------------------------------ */
   .calendar{padding:0 clamp(10px,3vw,28px) clamp(18px,3vw,28px)}
   .row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
-  .head{border-bottom:1px solid var(--ink);margin-bottom:-1px}
+  .head{border-bottom:1px solid var(--ink)}
   .col{
     padding:10px 6px 12px;
     text-align:center;
@@ -177,6 +177,10 @@
 
   .day{
     position:relative;
+    -webkit-appearance:none;
+    appearance:none;
+    border:0;
+    border-radius:0;
     border-left:1px solid var(--rule-soft);
     border-bottom:1px solid var(--rule-soft);
     background:none;
@@ -223,6 +227,7 @@
     gap:22px 32px;
     align-items:end;
   }
+  .figure{margin:0}
   .figure .k{display:block;font-size:.82rem;color:var(--ink-2);margin-bottom:2px}
   .figure .v{
     font-family:var(--serif);
@@ -239,7 +244,7 @@
   .breakdown{
     grid-column:1/-1;
     border-top:1px solid var(--rule-soft);
-    padding-top:14px;
+    padding:14px 0 0;
     margin:0;
     display:flex;
     flex-wrap:wrap;
@@ -260,25 +265,89 @@
   }
   .reset:hover{color:var(--ink)}
 
+  /* pinned summary: phones only, shown until the real totals are on screen */
+  .dock{display:none}
+
   @media (max-width:620px){
-    .masthead{padding:16px 14px;gap:14px}
-    .period{width:100%;justify-content:space-between}
-    .picker{margin-left:0}
-    .rate{width:100%}
-    .rate-field{width:100%}
-    .rate-field input{flex:1;width:auto}
-    .lede{padding:12px 14px;font-size:.84rem}
-    .calendar{padding:0 8px 18px}
-    .col{padding:8px 2px 10px}
+    body{padding:0}
+    .sheet{border:0;border-radius:0}
+
+    /* one row: ‹ [Month ▾] [Year] › — the dropdowns double as the heading */
+    .masthead{padding:12px 10px;gap:10px}
+    .period{width:100%;gap:6px}
+    .period h1{display:none}
+    .step{width:42px;height:42px;font-size:20px}
+    .picker{flex:1;min-width:0;margin:0;gap:6px}
+    .picker select,.picker input{
+      height:42px;
+      padding:0 8px;
+      font-family:var(--serif);
+      font-weight:600;
+      font-size:1.15rem;
+      color:var(--ink);
+    }
+    .picker select{flex:1;min-width:0}
+    .picker input{width:74px;flex:none}
+
+    /* rate: label beside the field, not above it */
+    .rate{width:100%;flex-direction:row;align-items:center;gap:10px}
+    .rate label{flex:none;font-size:.84rem}
+    .rate-field{flex:1;min-width:0}
+    .rate-field input{flex:1;width:auto;min-width:0;height:42px}
+    .rate-field select{font-size:16px}
+
+    .lede{padding:10px 12px;font-size:.84rem}
+
+    .calendar{padding:0 4px 12px}
+    .col{padding:8px 2px}
+    .col .name{margin-bottom:5px}
     .col .name .long{display:none}
     .col .name .short{display:inline}
-    .col input{font-size:.92rem;padding:5px 2px}
-    .col .tally{font-size:.66rem}
-    .day{min-height:54px;padding:5px 4px 7px}
+    /* 16px keeps iOS Safari from zooming when an input is tapped */
+    .col input{max-width:none;font-size:16px;padding:7px 0;height:38px}
+    .col .tally{font-size:.68rem;margin-top:4px}
+    .day{min-height:48px;padding:5px 4px 6px}
     .day .date{font-size:.76rem}
-    .day .hrs{font-size:.88rem}
+    .day .hrs{font-size:.92rem}
+    .day .hrs .u{display:none}
     .day.skipped::after{display:none}
-    .totals{padding:18px 14px;gap:18px}
+
+    .totals{padding:16px 12px 24px;gap:16px}
+    .figure .v{font-size:2rem}
+    .breakdown{padding-top:12px;gap:2px 18px;font-size:.82rem}
+
+    .dock{
+      display:flex;
+      position:fixed;
+      left:0;right:0;bottom:0;
+      z-index:5;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));
+      background:var(--ink);
+      color:#C9D3CD;
+      font-size:.8rem;
+      transform:translateY(0);
+      transition:transform .18s ease-out;
+    }
+    .dock b{
+      font-family:var(--serif);
+      font-weight:600;
+      font-size:1.2rem;
+      margin-left:4px;
+    }
+    .dock .dh b{color:#9ED8CF}
+    .dock .dp b{color:#E6C57E}
+    .dock.away{transform:translateY(110%)}
+    /* room so the bar never covers the reset link */
+    .sheet{padding-bottom:calc(52px + env(safe-area-inset-bottom,0px))}
+  }
+  @media (max-width:340px){
+    .picker select,.picker input{font-size:1rem}
+    .picker input{width:62px}
+    .step{width:36px}
+    .rate label{display:none}
   }
   @media (prefers-reduced-motion:reduce){
     *{transition:none!important;animation:none!important}
@@ -333,6 +402,11 @@
     <p style="grid-column:1/-1;margin:0"><button class="reset" id="reset" type="button">Reset to a standard 8-hour week</button></p>
   </section>
 </main>
+
+<div class="dock" id="dock" aria-hidden="true">
+  <span class="dh">Hours<b id="dockHours">0</b></span>
+  <span class="dp">Total<b id="dockPay">—</b></span>
+</div>
 
 <script>
 (function(){
@@ -423,6 +497,9 @@
     daysSub: document.getElementById("daysSub"),
     rateSub: document.getElementById("rateSub"),
     breakdown: document.getElementById("breakdown"),
+    dock: document.getElementById("dock"),
+    dockHours: document.getElementById("dockHours"),
+    dockPay: document.getElementById("dockPay"),
     reset: document.getElementById("reset")
   };
 
@@ -546,6 +623,8 @@
     // totals
     el.totalHours.innerHTML = fmtHours(r.total) + '<span class="unit">h</span>';
     el.totalPay.textContent = fmtMoney(r.total * state.rate);
+    el.dockHours.textContent = fmtHours(r.total) + "h";
+    el.dockPay.textContent = fmtMoney(r.total * state.rate);
 
     var sub = r.workedDays + (r.workedDays === 1 ? " working day" : " working days");
     if(r.workedDays) sub += " · " + fmtHours(Math.round(r.total / r.workedDays * 100) / 100) + "h a day on average";
@@ -599,7 +678,7 @@
 
     var hrs = document.createElement("span");
     hrs.className = "hrs";
-    hrs.textContent = h > 0 ? fmtHours(h) + "h" : "–";
+    hrs.innerHTML = h > 0 ? fmtHours(h) + '<span class="u">h</span>' : "–";
     cell.appendChild(hrs);
 
     cell.addEventListener("click", function(){
@@ -649,6 +728,14 @@
 
   load();
   render();
+
+  // The pinned bar only earns its place while the real totals are off screen.
+  if("IntersectionObserver" in window){
+    var target = document.querySelector(".figure.hours");
+    new IntersectionObserver(function(entries){
+      el.dock.classList.toggle("away", entries[0].isIntersecting);
+    }).observe(target);
+  }
 })();
 </script>
 </body>
